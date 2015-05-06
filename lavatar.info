@@ -1,0 +1,5 @@
+name = Lavatar
+description = Letter avatar
+package = Social
+core = 7.x
+; configure = admin/config/development/devel

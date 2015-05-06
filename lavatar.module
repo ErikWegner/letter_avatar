@@ -1,0 +1,72 @@
+<?php
+/** 
+  * Implements hook_user_presave
+  */
+function lavatar_user_presave(&$edit, $account, $category) {
+	// When there is no picture present or the current picture is removed, and 
+	// no new upload is send, create the image 
+	if (($edit["picture"] === NULL || $edit["picture_delete"] === 1) && !$edit["picture_upload"]) {
+		if ($edit["picture_delete"] === 1 && $edit["picture"]) {
+			file_delete($edit["picture"]);
+		}
+		$edit["picture"] = _lavatar_create_image();
+		$edit["picture_delete"] = 0;
+	}
+}
+
+
+function _lavatar_create_image() {
+	$imgwidth = 64;
+	$imgheight = 64;
+	$my_img = imagecreate( $imgwidth, $imgheight );
+	$colors = array(
+	  "E103DE",
+	  "383FDD",
+	  "12F4FF",
+	  "3BFF12",
+	  "1D078A",
+	  "0D8226",
+	  "B0074B",
+	  "3D031C",
+	  "DED600",
+	  "AA0500",
+	  "FF4A75",
+	  "00CA51",
+	  "95CBF1",
+	  "DA3F07"
+	);
+	$int = hexdec($colors[mt_rand(0, count($colors))]);
+	$arr = array(
+	  "red" => 0xFF & ($int >> 0x10),
+		"green" => 0xFF & ($int >> 0x8),
+		"blue" => 0xFF & $int);
+	$background = imagecolorallocate( $my_img, $arr["red"], $arr["green"], $arr["blue"]);
+	
+	$black = ImageColorAllocate ($my_img, 0, 0, 0);
+	$white = ImageColorAllocate ($my_img, 255, 255, 255);
+	
+	//imagettfbbox: http://stackoverflow.com/questions/10689225/imagettftext-calculate-font-size-to-ensure-text-fits-image-width/10689312#10689312
+	$fontfile = drupal_get_path('module', 'lavatar') . "/SourceSansPro-Regular.otf";
+	$size = 31;
+	$text = "EW";
+	$boundings = imagettfbbox($size, 0, $fontfile, $text);
+	$textheight = $boundings[5] - $boundings[1];
+	$textwidth = $boundings[4] - $boundings[0];
+	$texty = ($imgheight - $textheight) / 2;
+	$textx = ($imgwidth - $textwidth - 2) / 2;
+	ImageTTFText ($my_img, $size, 0, $textx+1, $texty+1, $black, $fontfile, $text);
+	ImageTTFText ($my_img, $size, 0, $textx, $texty, $white, $fontfile, $text);
+	
+	
+	
+	ob_start();
+	imagepng($my_img);
+	$image_data = ob_get_contents();
+	ob_end_clean();
+	imagecolordeallocate( $my_img, $black );
+	imagecolordeallocate( $my_img, $white );
+	imagecolordeallocate( $my_img, $background );
+	imagedestroy( $my_img );
+	
+	return file_save_data($image_data);
+}
